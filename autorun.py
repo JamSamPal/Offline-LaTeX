@@ -34,9 +34,7 @@ while True:
                     "-output-directory",
                     pdf_dir,
                     filename,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                ]
             )
             print("PDF updated.")
         time.sleep(1)
