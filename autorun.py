@@ -1,4 +1,4 @@
-import subprocess, datetime, os, sys, shutil
+import subprocess, datetime, os, sys, shutil, re
 
 RED = "\033[91m"
 RESET = "\033[0m"
@@ -70,19 +70,30 @@ while True:
                 text=True,
             )
 
-            # Parse errors
+            # Parse errors with line numbers
             errors = []
-            for line in result.stdout.splitlines():
-                if line.startswith("!"):
-                    errors.append(line)
+            lines = result.stdout.splitlines()
+            for i, l in enumerate(lines):
+                if l.startswith("!"):
+                    msg = l
+                    line_info = ""
+                    # Check next few lines for "l.<number> ..."
+                    for j in range(i + 1, min(i + 5, len(lines))):
+                        m = re.match(r"l\.(\d+)\s+(.*)", lines[j])
+                        if m:
+                            line_info = f"Line {m.group(1)}: {m.group(2)}"
+                            break
+                    errors.append((msg, line_info))
 
             if errors:
-                print(f"{RED}Errors detected:{RESET}")
-                for e in errors:
-                    print(f"{RED}{e}{RESET}")
+                print(f"{RED} Errors detected:{RESET}")
+                for e, info in errors:
+                    if info:
+                        print(f"{RED}{e} ({info}){RESET}")
+                    else:
+                        print(f"{RED}{e}{RESET}")
             else:
                 print(f"PDF updated in {pdf_dir}")
-
     except KeyboardInterrupt:
         print("\nStopped.")
         break
