@@ -1,11 +1,14 @@
-import subprocess, time, os, sys
+import subprocess, datetime, os, sys, shutil
+
+RED = "\033[91m"
+RESET = "\033[0m"
+
 
 if len(sys.argv) < 2:
     print("Usage: python autolatex <path/to/file.tex> [<path/to/output/directory>]")
     sys.exit(1)
 
 filename = sys.argv[1]
-pdfpath = sys.argv[1]
 
 if not os.path.exists(filename):
     print(f"Error: file '{filename}' not found.")
@@ -17,27 +20,69 @@ if len(sys.argv) > 2:
 else:
     pdf_dir = os.path.dirname(os.path.abspath(filename))
 
+print(f"Output directory '{pdf_dir}'")
+
+# Allow user to save a history
+history_dir = os.path.join(os.path.dirname(os.path.abspath(filename)), "history")
+os.makedirs(history_dir, exist_ok=True)
 
 print(f"Watching {filename} for changes... (Ctrl+C to quit)")
-
+print("Press 's' + Enter at any time to save a history snapshot.")
 last_mtime = None
 while True:
     try:
+        # Non-blocking input for saving history
+        import select, sys as sys_in
+
+        print("\r", end="")  # keep terminal neat
+        if sys_in.stdin in select.select([sys_in.stdin], [], [], 1)[0]:
+            line = sys_in.stdin.readline().strip()
+            if line.lower() == "s":
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                basename = os.path.basename(filename)
+                snapshot_file = os.path.join(history_dir, f"{basename}_{timestamp}.tex")
+                shutil.copy(filename, snapshot_file)
+                # Also copy PDF if exists
+                pdf_file = os.path.splitext(filename)[0] + ".pdf"
+                if os.path.exists(os.path.join(pdf_dir, os.path.basename(pdf_file))):
+                    shutil.copy(
+                        os.path.join(pdf_dir, os.path.basename(pdf_file)),
+                        os.path.join(
+                            history_dir, f"{os.path.basename(pdf_file)}_{timestamp}.pdf"
+                        ),
+                    )
+                print(f"Saved snapshot: {snapshot_file}")
+
+        # Check for file changes
         mtime = os.path.getmtime(filename)
         if mtime != last_mtime:
             last_mtime = mtime
             print("Compiling...")
-            subprocess.run(
+            result = subprocess.run(
                 [
                     "pdflatex",
                     "-interaction=nonstopmode",
                     "-output-directory",
                     pdf_dir,
                     filename,
-                ]
+                ],
+                capture_output=True,
+                text=True,
             )
-            print("PDF updated.")
-        time.sleep(1)
+
+            # Parse errors
+            errors = []
+            for line in result.stdout.splitlines():
+                if line.startswith("!"):
+                    errors.append(line)
+
+            if errors:
+                print(f"{RED}Errors detected:{RESET}")
+                for e in errors:
+                    print(f"{RED}{e}{RESET}")
+            else:
+                print(f"PDF updated in {pdf_dir}")
+
     except KeyboardInterrupt:
         print("\nStopped.")
         break
