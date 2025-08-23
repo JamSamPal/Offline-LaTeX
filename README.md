@@ -4,6 +4,6 @@ Lightweight, offline LaTeX editor
 # To run:
 sudo apt install texlive-latex-base
 
-python autorun.py [your latex file w/ the filepath relative to where you're running this]
+python autolatex <path/to/file.tex> [<path/to/output/directory>]
 
-(Edit your file and in e.g. VsCode and when you hit save the script should (re)generate a compiled pdf.
+(Edit your file.tex in e.g. VsCode and when you hit save the script should (re)generate a compiled pdf.)
