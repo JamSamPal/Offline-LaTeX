@@ -1,2 +1,4 @@
 *.aux
 *.log
+*.egg-info
+/build
